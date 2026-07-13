@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import Robot from './Robot.jsx';
 import { Knot, CubeWave, Gyro, Portal, Stars } from './Zones.jsx';
-import { curve, journeyState, ZONES, ROBOT_LEAD, isSmall } from './journey.js';
+import { curve, journeyState, ROBOT_LEAD, CAM_END, ROBOT_END, isSmall } from './journey.js';
 import { useReducedMotionRef } from './useReducedMotion.js';
 
 const _camPos = new THREE.Vector3();
@@ -48,15 +48,18 @@ function CameraRig() {
     journeyState.t = THREE.MathUtils.damp(journeyState.t, target, 3, delta);
     const t = journeyState.t;
 
-    curve.getPointAt(t, _camPos);
-    curve.getTangentAt(t, _tangent);
-    curve.getPointAt(Math.min(t + ROBOT_LEAD, 1), _robotPos);
+    const camT = Math.min(t, CAM_END);
+    curve.getPointAt(camT, _camPos);
+    curve.getTangentAt(camT, _tangent);
+    curve.getPointAt(Math.min(t + ROBOT_LEAD, ROBOT_END), _robotPos);
 
     _right.crossVectors(_tangent, UP).normalize();
 
-    // Shift the camera off-axis so the robot rides beside the text column.
-    const lateral = isSmall ? 0 : -1.15;
-    _camPos.addScaledVector(_right, lateral).addScaledVector(UP, 0.75);
+    // Shift the camera off-axis so the robot rides beside the text column,
+    // easing back to center for the finale so the portal frames the CTA.
+    const endFade = 1 - THREE.MathUtils.smoothstep(t, 0.78, CAM_END);
+    const lateral = (isSmall ? -0.55 : -1.6) * endFade;
+    _camPos.addScaledVector(_right, lateral).addScaledVector(UP, 0.75 * endFade);
 
     // Gentle pointer parallax on fine pointers.
     if (pointerFine.current && !noMotion.current) {
@@ -67,7 +70,13 @@ function CameraRig() {
     camera.position.copy(_camPos);
 
     _look.copy(_robotPos).addScaledVector(_tangent, 2);
-    if (isSmall) _look.y -= 0.85; // aim lower → robot rides the upper third
+    if (isSmall) {
+      // aim low-left → robot rides the upper right, clear of the headline
+      _look.y -= 1.6 * endFade;
+      _look.addScaledVector(_right, -0.5 * endFade);
+    } else {
+      _look.addScaledVector(_right, -0.9 * endFade); // robot rides right of the text
+    }
     camera.lookAt(_look);
   });
   return null;

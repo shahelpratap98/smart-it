@@ -1,13 +1,13 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { curve, journeyState, ROBOT_LEAD } from './journey.js';
+import { curve, journeyState, ROBOT_LEAD, ROBOT_END } from './journey.js';
 import { useReducedMotionRef } from './useReducedMotion.js';
 
 const _pos = new THREE.Vector3();
 const _tangent = new THREE.Vector3();
 const _target = new THREE.Vector3();
-const EYE_BASE = new THREE.Color(0x67e8f9);
+const EYE_BASE = new THREE.Color(0xa5f3fc);
 
 export default function Robot() {
   const group = useRef();   // path follower (position + heading)
@@ -19,9 +19,10 @@ export default function Robot() {
   const noMotion = useReducedMotionRef();
 
   const mats = useMemo(() => ({
-    shell:  new THREE.MeshStandardMaterial({ color: 0xd9ddf2, metalness: 0.75, roughness: 0.3 }),
-    accent: new THREE.MeshStandardMaterial({ color: 0x7c3aed, metalness: 0.6, roughness: 0.3, emissive: 0x2e1065, emissiveIntensity: 0.5 }),
-    dark:   new THREE.MeshStandardMaterial({ color: 0x11131f, metalness: 0.4, roughness: 0.5 }),
+    // low metalness: there is no environment map, so high metalness reads black
+    shell:  new THREE.MeshStandardMaterial({ color: 0xd4daf5, metalness: 0.3, roughness: 0.38 }),
+    accent: new THREE.MeshStandardMaterial({ color: 0x8b5cf6, metalness: 0.35, roughness: 0.35, emissive: 0x4c1d95, emissiveIntensity: 0.55 }),
+    dark:   new THREE.MeshStandardMaterial({ color: 0x0d0f1c, metalness: 0.1, roughness: 0.75 }),
     glowCyan: new THREE.MeshBasicMaterial({ color: 0x67e8f9 }),
     glowPurple: new THREE.MeshBasicMaterial({ color: 0xc4b5fd }),
     flame: new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -29,7 +30,7 @@ export default function Robot() {
 
   useFrame((state, delta) => {
     const t = journeyState.t;
-    const robotT = Math.min(t + ROBOT_LEAD, 1);
+    const robotT = Math.min(t + ROBOT_LEAD, ROBOT_END);
 
     curve.getPointAt(robotT, _pos);
     curve.getTangentAt(robotT, _tangent);
@@ -55,12 +56,14 @@ export default function Robot() {
       flameL.current.scale.set(1, flicker, 1);
       flameR.current.scale.set(1, 1.9 - flicker, 1);
       lightRef.current.intensity = 2.2 + flicker * 1.6;
-      eyeMatRef.current.color.copy(EYE_BASE).multiplyScalar(0.75 + Math.sin(el * 2.4) * 0.25);
+      eyeMatRef.current.color.copy(EYE_BASE).multiplyScalar(0.9 + Math.sin(el * 2.4) * 0.1);
     }
   });
 
   return (
     <group ref={group}>
+      {/* travelling fill light so the robot pops against deep space */}
+      <pointLight position={[0.6, 1.2, 1.6]} color={0xd8ccff} intensity={2.4} decay={1} distance={6} />
       <group ref={body} scale={0.55}>
         {/* head */}
         <group position={[0, 1.18, 0]}>
@@ -72,12 +75,13 @@ export default function Robot() {
             <boxGeometry args={[0.62, 0.32, 0.06]} />
           </mesh>
           {/* eyes */}
-          <mesh position={[-0.14, 0.02, 0.45]}>
-            <sphereGeometry args={[0.07, 12, 12]} />
-            <meshBasicMaterial ref={eyeMatRef} color={0x67e8f9} />
+          <mesh position={[-0.14, 0.02, 0.47]}>
+            <sphereGeometry args={[0.09, 12, 12]} />
+            <meshBasicMaterial ref={eyeMatRef} color={0xa5f3fc} />
           </mesh>
-          <mesh position={[0.14, 0.02, 0.45]} material={mats.glowCyan}>
-            <sphereGeometry args={[0.07, 12, 12]} />
+          <mesh position={[0.14, 0.02, 0.47]}>
+            <sphereGeometry args={[0.09, 12, 12]} />
+            <meshBasicMaterial color={0xa5f3fc} />
           </mesh>
           {/* ears */}
           <mesh position={[-0.48, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>

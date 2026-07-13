@@ -31,7 +31,12 @@ if (isSmall) {
 }
 
 // How far ahead of the camera the robot flies (as curve progress).
-export const ROBOT_LEAD = 0.032;
+export const ROBOT_LEAD = isSmall ? 0.034 : 0.032;
+
+// The camera parks just before the portal (t≈0.947 on the curve) so the ring
+// frames the CTA; the robot keeps going and disappears through it.
+export const CAM_END = 0.9;
+export const ROBOT_END = 0.985;
 
 // Shared per-frame journey state (written by CameraRig, read by everyone).
 export const journeyState = { t: 0 };
